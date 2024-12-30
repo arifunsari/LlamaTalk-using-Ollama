@@ -9,7 +9,7 @@ def get_base64_of_bin_file(bin_file):
         return base64.b64encode(f.read()).decode()
 
 # Path to the local image
-image_path = r"C:\Users\arifa\Downloads\olama.jpeg"  # Use raw string (r"") for Windows file paths
+image_path = r"olama.jpeg"  #olama.jpeg  # Use raw string (r"") for Windows file paths
 img_base64 = get_base64_of_bin_file(image_path)
 
 # Inject custom CSS for the background and styling
