@@ -1,7 +1,31 @@
-from langchain_community.llms import Ollama
+import os
+from dotenv import load_dotenv
 import streamlit as st
+from langchain_community.llms import Ollama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.chains import LLMChain
 import time
 import base64
+import subprocess
+
+# Load environment variables
+load_dotenv()
+os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
+os.environ["LANGCHAIN_Tracing_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
+
+# Function to pull the models - Run separately before starting the app.
+def pull_models(model_list):
+    for model in model_list:
+        print(f"Pulling model: {model}")
+        subprocess.run(["ollama", "pull", model], check=True)
+
+# List of models to be pulled - Do this separately. (Now limited to "llama3:latest")
+model_options = ["llama3"]  # Updated to only use the available model
+
+# Pull all models before running the app (Optional: Run this manually via CLI only once to download models)
+# pull_models(model_options)  # You can skip this part since "llama3:latest" is already available.
 
 # Encode the image to Base64
 def get_base64_of_bin_file(bin_file):
@@ -9,7 +33,7 @@ def get_base64_of_bin_file(bin_file):
         return base64.b64encode(f.read()).decode()
 
 # Path to the local image
-image_path = r"olama.jpeg"  #olama.jpeg  # Use raw string (r"") for Windows file paths
+image_path = r"C:\Users\arifa\Downloads\olama.jpeg"  # Use raw string (r"") for Windows file paths
 img_base64 = get_base64_of_bin_file(image_path)
 
 # Inject custom CSS for the background and styling
@@ -23,44 +47,44 @@ page_bg_img = f"""
 }}
 
 h1.title {{
-    font-size: 3.5rem; /* Larger size for the title */
+    font-size: 3.5rem;
     font-weight: bold;
-    color: #FFD700; /* Gold color for text on dark background */
-    text-shadow: 2px 2px 4px #000000; /* Subtle shadow for visibility */
+    color: #FFD700;
+    text-shadow: 2px 2px 4px #000000;
     margin-bottom: 20px;
     text-align: center;
 }}
 
 p.designer {{
-    font-size: 1.2rem; /* Slightly smaller text for the designer */
+    font-size: 1.2rem;
     font-weight: normal;
-    color: #ADD8E6; /* Light blue for contrast */
+    color: #ADD8E6;
     text-align: center;
     margin-top: -10px;
 }}
 
 label.input-label {{
-    font-size: 1.5rem; /* Bigger size for input label */
+    font-size: 1.5rem;
     font-weight: bold;
-    color: #FFFFFF; /* White text */
-    background-color: #000000; /* Black background for highlight */
+    color: #FFFFFF;
+    background-color: #000000;
     padding: 5px 10px;
     border-radius: 5px;
     display: inline-block;
 }}
 
 textarea.stTextArea {{
-    font-size: 1.1rem; /* Slightly bigger font for text area */
+    font-size: 1.1rem;
 }}
 
 .response-container {{
-    background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent background */
-    border: 2px solid #FFD700; /* Gold border */
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 2px solid #FFD700;
     padding: 20px;
     border-radius: 10px;
-    max-height: 400px; /* Optional: limit height */
-    overflow-y: auto; /* Enable scrolling if content exceeds height */
-    color: #FFFFFF; /* Response text color */
+    max-height: 400px;
+    overflow-y: auto;
+    color: #FFFFFF;
 }}
 </style>
 """
@@ -74,45 +98,54 @@ st.markdown('<h1 class="title">LlamaTalk using Ollama</h1>', unsafe_allow_html=T
 # Add the designer attribution
 st.markdown('<p class="designer">Designed by <b>Arif Ansari</b></p>', unsafe_allow_html=True)
 
-# Initialize the LLM
-llm = Ollama(model="llama3")
+# Dropdown for model selection (only "llama3:latest" available now)
+selected_model = st.selectbox("Select a model to use:", model_options)
 
-# Input field for the prompt
+# Prompt Template
+default_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("user", "Hello, how are you?"),
+        ("ai", "I'm doing well, thanks!"),
+        ("user", "That's good to hear."),
+        ("user", "Question: {question}")
+    ]
+)
+
 st.markdown('<label class="input-label">Enter your prompt:</label>', unsafe_allow_html=True)
-prompt = st.text_area("", height=150)
+prompt_input = st.text_area("", height=150)
 
-# Create the bounding box for responses
-st.markdown("### **Chatbot Response**")
-response_container = st.empty()  # Placeholder for chatbot response in the styled container
+# Initialize LLM chain
+chain = None
+response_container = st.empty()
 
-# Button to trigger generation
-if st.button("Generate"):
-    if prompt:
+# Generate response when selected model is and prompt input exists
+if selected_model and prompt_input:
+    llm = Ollama(model=selected_model)  # Use the available "llama3:latest"
+    chain = LLMChain(llm=llm, prompt=default_prompt, output_parser=StrOutputParser())
+
+# Generate response
+if st.button("Generate Response"):
+    if chain:
         with st.spinner("Generating response..."):
-            # Store the complete response progressively
             full_response = ""
-
             try:
-                # Iterate over the generator and update the response container
-                for chunk in llm.stream(prompt):
+                for chunk in llm.stream(prompt_input):
                     if isinstance(chunk, dict) and "text" in chunk:
                         full_response += chunk["text"]
                     elif isinstance(chunk, str):
                         full_response += chunk
                     else:
-                        st.error("Unexpected chunk type encountered")
+                        st.error("Unexpected chunk type encountered.")
                         break
-
-                    # Update the styled container with bolded text dynamically
+                    
                     response_html = f"""
                     <div class="response-container">
                         <p>{full_response}</p>
                     </div>
                     """
                     response_container.markdown(response_html, unsafe_allow_html=True)
-
-                    # Simulate real-time streaming
                     time.sleep(0.1)
-
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+else:
+    st.write("Please select a model and enter a prompt to generate a response.")
