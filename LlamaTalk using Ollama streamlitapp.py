@@ -9,34 +9,31 @@ import time
 import base64
 import subprocess
 
-# Load environment variables
+
 load_dotenv()
 os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
 os.environ["LANGCHAIN_Tracing_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
 
-# Function to pull the models - Run separately before starting the app.
+# Function to pull the models
 def pull_models(model_list):
     for model in model_list:
         print(f"Pulling model: {model}")
         subprocess.run(["ollama", "pull", model], check=True)
 
-# List of models to be pulled - Do this separately. (Now limited to "llama3:latest")
-model_options = ["llama3"]  # Updated to only use the available model
+model_options = ["llama3"] 
 
-# Pull all models before running the app (Optional: Run this manually via CLI only once to download models)
-# pull_models(model_options)  # You can skip this part since "llama3:latest" is already available.
 
-# Encode the image to Base64
+# Encode image to Base64
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
-# Path to the local image
-image_path = r"C:\Users\arifa\Downloads\olama.jpeg"  # Use raw string (r"") for Windows file paths
+#path of the image for frontent app
+image_path = r"C:\Users\arifa\Downloads\olama.jpeg"  
 img_base64 = get_base64_of_bin_file(image_path)
 
-# Inject custom CSS for the background and styling
+# css for background
 page_bg_img = f"""
 <style>
 [data-testid="stAppViewContainer"] {{
@@ -89,16 +86,16 @@ textarea.stTextArea {{
 </style>
 """
 
-# Apply the custom CSS
+#custom CSS
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
-# Add the app title
+#title
 st.markdown('<h1 class="title">LlamaTalk using Ollama</h1>', unsafe_allow_html=True)
 
-# Add the designer attribution
+#Highlight the name
 st.markdown('<p class="designer">Designed by <b>Arif Ansari</b></p>', unsafe_allow_html=True)
 
-# Dropdown for model selection (only "llama3:latest" available now)
+# Dropdown for model selection but only i used the llama3 latest model.
 selected_model = st.selectbox("Select a model to use:", model_options)
 
 # Prompt Template
@@ -114,16 +111,15 @@ default_prompt = ChatPromptTemplate.from_messages(
 st.markdown('<label class="input-label">Enter your prompt:</label>', unsafe_allow_html=True)
 prompt_input = st.text_area("", height=150)
 
-# Initialize LLM chain
 chain = None
 response_container = st.empty()
 
-# Generate response when selected model is and prompt input exists
+
 if selected_model and prompt_input:
-    llm = Ollama(model=selected_model)  # Use the available "llama3:latest"
+    llm = Ollama(model=selected_model)  # Use the latest model or select "llama3:
     chain = LLMChain(llm=llm, prompt=default_prompt, output_parser=StrOutputParser())
 
-# Generate response
+# Now Generate the response
 if st.button("Generate Response"):
     if chain:
         with st.spinner("Generating response..."):
